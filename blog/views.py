@@ -3,6 +3,7 @@ from .models import Blog, Comment
 from django.utils import timezone
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
+from .forms import BlogPost #blogpost import해올것
 # Create your views here.
 
 def home(request):
@@ -20,14 +21,20 @@ def detail(request, blog_id):
 def new(request):
     return render(request, 'new.html')
 
+@login_required
 def create(request):
-    blog = Blog()
-    blog.title = request.GET['title']
-    blog.body = request.GET['body']
-    blog.pub_date = timezone.datetime.now()
-    blog.save()
-    return redirect('/blog/' +str(blog.id))
+    if request.method == "POST":
+        form = BlogPost(request.POST)#post방식으로 받기
+        if form.is_valid():
+            post = form.save(commit=False) #아직저장하지말기
+            post.save()
+            return redirect('home')
+    else:
+        form = BlogPost()
+    return render(request, 'new.html', {'form':form})
 
+
+@login_required
 def edit(request, blog_id):
     blog = get_object_or_404(Blog, pk=blog_id)
     if request.method == "POST":
@@ -76,5 +83,25 @@ def comment_edit(request,comment_id):
             return render(request, 'comment_edit.html', context)
 
 
-  
+@login_required
+def comment_delete(request,comment_id):
+    
+    comment = get_object_or_404(Comment, pk=comment_id)
+    if request.user == comment.user: 
+        if request.method == "POST":
+            post_id = comment.post.id
+            comment.delete()
+            return redirect('/blog/'+ str(post_id)) 
+        return HttpResponse('잘못된 접근입니다')
 
+def blogpost(request):
+    if request.method == "POST":
+        form = BlogPost(request.POST)#post방식으로 받기
+        if form.is_vaild():
+            post = form.save(commit=False) #아직저장하지말기
+            post.pub_date = timezone.now() #지금시각넣어주기
+            post.save()
+            return redirect('home')
+    else:
+        form = BlogPost()
+        return render(request, 'new.html', {'form':form})
